@@ -1,0 +1,19 @@
+
+
+{
+  "name": "culers-corner",
+  "version": "1.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
+
+
+
+
