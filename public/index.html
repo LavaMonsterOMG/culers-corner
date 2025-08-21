@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Culers' Corner — Breakout Tracker + POTM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="max-w-5xl mx-auto p-6 space-y-8">
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Culers' Corner</h1>
+      <a href="#admin" class="text-sm underline">Admin</a>
+    </header>
+
+    <!-- Players List -->
+    <section>
+      <h2 class="text-xl font-semibold mb-2">Players</h2>
+      <div id="players" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- Allocation Form -->
+    <section class="bg-white rounded-xl shadow p-4" id="allocate">
+      <h2 class="text-lg font-semibold mb-3">Breakout Tracker — invest your 100 points</h2>
+      <form id="allocForm" class="space-y-4">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="text-sm">Your name</span>
+            <input name="name" required class="mt-1 w-full border rounded-lg p-2" />
+          </label>
+          <label class="block">
+            <span class="text-sm">Email (for leaderboard)</span>
+            <input name="email" type="email" required class="mt-1 w-full border rounded-lg p-2" />
+          </label>
+        </div>
+        <div id="allocInputs" class="space-y-2"></div>
+        <div class="flex items-center justify-between">
+          <div class="text-sm" id="totalCheck">Total: 0 / 100</div>
+          <button class="bg-black text-white px-4 py-2 rounded-lg">Submit</button>
+        </div>
+      </form>
+      <p class="text-sm text-gray-500 mt-2">Tip: spread your 100 points across any players you like.</p>
+    </section>
+
+    <!-- Leaderboard -->
+    <section>
+      <h2 class="text-xl font-semibold mb-2">Leaderboard</h2>
+      <div id="leaderboard" class="bg-white rounded-xl shadow divide-y"></div>
+    </section>
+
+    <!-- POTM Poll -->
+    <section class="bg-white rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-3">Player of the Match — vote</h2>
+      <form id="potmForm" class="space-y-4">
+        <div class="grid sm:grid-cols-3 gap-4">
+          <label class="block">
+            <span class="text-sm">Your name</span>
+            <input name="name" required class="mt-1 w-full border rounded-lg p-2" />
+          </label>
+          <label class="block">
+            <span class="text-sm">Email</span>
+            <input name="email" type="email" required class="mt-1 w-full border rounded-lg p-2" />
+          </label>
+          <label class="block">
+            <span class="text-sm">Match</span>
+            <select name="match" id="matchSelect" class="mt-1 w-full border rounded-lg p-2"></select>
+          </label>
+        </div>
+
+        <div id="potmPlayers" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+
+        <button class="bg-black text-white px-4 py-2 rounded-lg">Submit Vote</button>
+      </form>
+
+      <div class="mt-6">
+        <h3 class="font-semibold">Results</h3>
+        <div id="potmResults" class="divide-y"></div>
+      </div>
+    </section>
+
+    <!-- Admin (update points + add matches) -->
+    <section id="admin" class="bg-white rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-3">Admin</h2>
+      <div class="grid md:grid-cols-2 gap-6">
+
+        <div>
+          <h3 class="font-medium mb-2">Update Player Points</h3>
+          <div class="grid sm:grid-cols-2 gap-2" id="adminRows"></div>
+        </div>
+
+        <div>
+          <h3 class="font-medium mb-2">Add a Match</h3>
+          <form id="addMatchForm" class="space-y-2">
+            <label class="block">
+              <span class="text-sm">Date (YYYY-MM-DD)</span>
+              <input name="date" placeholder="2025-08-21" class="mt-1 w-full border rounded-lg p-2" />
+            </label>
+            <label class="block">
+              <span class="text-sm">Opponent</span>
+              <input name="opponent" placeholder="Sevilla" class="mt-1 w-full border rounded-lg p-2" />
+            </label>
+            <label class="block">
+              <span class="text-sm">Home/Away</span>
+              <select name="home_away" class="mt-1 w-full border rounded-lg p-2">
+                <option>HOME</option>
+                <option>AWAY</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-sm">Status</span>
+              <select name="status" class="mt-1 w-full border rounded-lg p-2">
+                <option>upcoming</option>
+                <option>live</option>
+                <option selected>final</option>
+              </select>
+            </label>
+            <button class="bg-black text-white px-4 py-2 rounded-lg">Add Match</button>
+          </form>
+          <p class="text-xs text-gray-500 mt-1">Set status to <b>final</b> to enable voting.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="text-sm text-gray-500">
+      <h3 class="font-semibold">Coming next:</h3>
+      <ul class="list-disc ml-6">
+        <li>Pre-match Win Probability widget</li>
+        <li>Fixtures & Results section</li>
+      </ul>
+    </section>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const api = (p, opts={}) => fetch(p, { headers: { 'Content-Type': 'application/json' }, ...opts }).then(r => r.json());
+
+    let PLAYERS = [];
+    let MATCHES = [];
+
+    async function loadPlayers() {
+      PLAYERS = await api('/api/players');
+      const container = $('#players');
+      container.innerHTML = PLAYERS.map(p => `
+        <div class="bg-white rounded-xl shadow p-4 flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-gray-200 overflow-hidden"></div>
+          <div class="flex-1">
+            <div class="font-medium">${p.name}</div>
+            <div class="text-xs text-gray-500">${p.club || ''}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-sm">Total: <span class="font-semibold">${p.total_points}</span></div>
+          </div>
+        </div>
+      `).join('');
+
+      const inputs = $('#allocInputs');
+      inputs.innerHTML = PLAYERS.map(p => `
+        <label class="flex items-center justify-between bg-gray-100 rounded-lg p-2">
+          <span>${p.name}</span>
+          <input type="number" min="0" max="100" value="0" data-player="${p.id}" class="w-20 border rounded p-1 text-right" />
+        </label>
+      `).join('');
+      inputs.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateTotal));
+      updateTotal();
+
+      // Admin rows
+      const admin = $('#adminRows');
+      admin.innerHTML = PLAYERS.map(p => `
+        <div class="flex items-center justify-between border rounded-lg p-2">
+          <div>
+            <div class="font-medium">${p.name}</div>
+            <div class="text-xs text-gray-500">Current: ${p.total_points}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="number" placeholder="Δ points" class="w-24 border rounded p-1" data-admin-delta="${p.id}" />
+            <button class="px-3 py-1 rounded bg-black text-white" data-admin-apply="${p.id}">Apply</button>
+          </div>
+        </div>
+      `).join('');
+
+      admin.querySelectorAll('[data-admin-apply]').forEach(btn => btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.getAttribute('data-admin-apply');
+        const input = admin.querySelector(`[data-admin-delta="${id}"]`);
+        const delta = Number(input.value || 0);
+        if (!delta) return alert('Enter a delta');
+        await api(`/api/players/${id}/points`, { method: 'POST', body: JSON.stringify({ delta }) });
+        await refreshAll();
+      }));
+    }
+
+    async function loadMatches() {
+      MATCHES = await api('/api/matches');
+      const select = $('#matchSelect');
+      select.innerHTML = MATCHES.map(m => `
+        <option value="${m.id}">${m.date} vs ${m.opponent} (${m.home_away}) — ${m.status}</option>
+      `).join('');
+      if (MATCHES.length) loadPotmResults(select.value);
+    }
+
+    function updateTotal() {
+      const vals = Array.from(document.querySelectorAll('#allocInputs input')).map(i => Number(i.value || 0));
+      const total = vals.reduce((s, v) => s + v, 0);
+      $('#totalCheck').textContent = `Total: ${total} / 100`;
+      $('#totalCheck').className = 'text-sm ' + (total === 100 ? 'text-green-600' : 'text-red-600');
+    }
+
+    async function submitAlloc(e) {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const name = form.name.value.trim();
+      const email = form.email.value.trim();
+      const allocations = Array.from(document.querySelectorAll('#allocInputs input'))
+        .map(i => ({ player_id: Number(i.getAttribute('data-player')), points_allocated: Number(i.value || 0) }))
+        .filter(a => a.points_allocated > 0);
+      const total = allocations.reduce((s,a) => s + a.points_allocated, 0);
+      if (total !== 100) return alert('Total must be 100');
+      const res = await api('/api/allocate', { method: 'POST', body: JSON.stringify({ name, email, allocations }) });
+      if (res.error) return alert(res.error);
+      alert('Saved!');
+      await loadLeaderboard();
+    }
+
+    async function loadLeaderboard() {
+      const data = await api('/api/leaderboard');
+      const box = $('#leaderboard');
+      box.innerHTML = data.map((r, idx) => `
+        <div class="flex items-center justify-between p-3">
+          <div class="flex items-center gap-3">
+            <div class="w-6 text-right">${idx+1}</div>
+            <div class="font-medium">${r.name}</div>
+          </div>
+          <div class="tabular-nums font-semibold">${Number(r.portfolio_points).toFixed(1)}</div>
+        </div>
+      `).join('');
+    }
+
+    // POTM UI
+    function renderPotmPlayers() {
+      const box = $('#potmPlayers');
+      box.innerHTML = PLAYERS.map(p => `
+        <label class="flex items-center justify-between bg-gray-100 rounded-lg p-2">
+          <div class="flex items-center gap-2">
+            <input type="radio" name="potm_player" value="${p.id}" />
+            <span>${p.name}</span>
+          </div>
+          <span class="text-xs text-gray-500">${p.club || ''}</span>
+        </label>
+      `).join('');
+    }
+
+    async function submitPotm(e) {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const name = form.name.value.trim();
+      const email = form.email.value.trim();
+      const match_id = Number(form.match.value);
+      const selected = document.querySelector('input[name="potm_player"]:checked');
+      if (!selected) return alert('Pick a player!');
+      const player_id = Number(selected.value);
+      const res = await api(`/api/potm/${match_id}/vote`, { method: 'POST', body: JSON.stringify({ name, email, player_id }) });
+      if (res.error) return alert(res.error);
+      alert('Vote recorded!');
+      await loadPotmResults(match_id);
+    }
+
+    async function loadPotmResults(match_id) {
+      const data = await api(`/api/potm/${match_id}/results`);
+      const totalVotes = data.reduce((s, r) => s + Number(r.votes), 0) || 0;
+      const box = $('#potmResults');
+      box.innerHTML = data.map(r => {
+        const pct = totalVotes ? Math.round((Number(r.votes) / totalVotes) * 100) : 0;
+        return `
+          <div class="p-2 flex items-center justify-between">
+            <div class="flex-1 pr-3">
+              <div class="font-medium">${r.player_name}</div>
+              <div class="h-2 bg-gray-200 rounded mt-1">
+                <div class="h-2 rounded" style="width:${pct}%; background:#111;"></div>
+              </div>
+            </div>
+            <div class="w-24 text-right tabular-nums">${r.votes} (${pct}%)</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function addMatch(e) {
+      e.preventDefault();
+      const f = e.currentTarget;
+      const payload = {
+        date: f.date.value || new Date().toISOString().slice(0,10),
+        opponent: f.opponent.value || 'Opponent',
+        home_away: f.home_away.value || 'HOME',
+        status: f.status.value || 'final'
+      };
+      const res = await api('/api/matches', { method: 'POST', body: JSON.stringify(payload) });
+      if (res.error) return alert(res.error);
+      alert('Match added');
+      await loadMatches();
+      await loadPotmResults($('#matchSelect').value);
+    }
+
+    async function refreshAll() {
+      await loadPlayers();
+      await loadMatches();
+      renderPotmPlayers();
+      await loadLeaderboard();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await refreshAll();
+      $('#allocForm').addEventListener('submit', submitAlloc);
+      $('#potmForm').addEventListener('submit', submitPotm);
+      $('#addMatchForm').addEventListener('submit', addMatch);
+      $('#matchSelect').addEventListener('change', (e) => loadPotmResults(e.target.value));
+    });
+  </script>
+</body>
+</html>
